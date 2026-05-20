@@ -521,7 +521,10 @@ Familienzimmer,Familie Schmidt,22.06.2025,28.06.2025,Direkt,4 Personen</div>
 
   <!-- Legend -->
   <div class="legend">
-    <div class="legend-item"><div class="legend-dot" style="background:#E6F1FB;border-color:#85B7EB"></div>Belegt</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#B5D4F4;border-color:#85B7EB"></div>Evelyn</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#9FE1CB;border-color:#5DCAA5"></div>Johannes</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#FAEEDA;border:1.5px dashed #BA7517"></div>Reservierung</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#E6F1FB;border-color:#85B7EB"></div>Belegt (keine Angabe)</div>
     <div class="legend-item"><div class="legend-dot" style="background:#378ADD;border-color:#378ADD"></div>Heute</div>
     <div class="legend-item"><div class="legend-dot" style="background:var(--bg);border-color:var(--border)"></div>Frei</div>
   </div>
@@ -553,6 +556,18 @@ Familienzimmer,Familie Schmidt,22.06.2025,28.06.2025,Direkt,4 Personen</div>
         <option value="email">E-Mail</option>
         <option value="website">Website</option>
       </select>
+    </div>
+    <div class="form-row">
+      <label>Zust&#228;ndig</label>
+      <select id="f-person">
+        <option value="">&#8211; keine Angabe &#8211;</option>
+        <option value="evelyn">Evelyn</option>
+        <option value="johannes">Johannes</option>
+      </select>
+    </div>
+    <div class="form-row" style="display:flex;align-items:center;gap:10px;padding:6px 0">
+      <input type="checkbox" id="f-reservation" style="width:16px;height:16px;cursor:pointer;accent-color:#BA7517">
+      <label for="f-reservation" style="margin:0;cursor:pointer;font-size:13px;color:var(--text)">Reservierung <span style="font-size:11px;color:var(--text-secondary)">(Anfrage, noch nicht fix)</span></label>
     </div>
     <div class="form-row">
       <label>Notiz (optional)</label>
@@ -635,6 +650,10 @@ function srcLabel(s) {
   return { booking:'Booking.com', direkt:'Direkt', telefon:'Telefon', email:'E-Mail', website:'Website' }[s] || s;
 }
 
+function personLabel(p) {
+  return { evelyn:'Evelyn', johannes:'Johannes' }[p] || '';
+}
+
 /* ========== CALENDAR ========== */
 function renderCalendar() {
   const days = daysInMonth(currentYear, currentMonth);
@@ -670,10 +689,19 @@ function renderCalendar() {
         let inner = '';
         if (bk) {
           const isFirst = parseDate(ds).getTime() === parseDate(bk.checkin).getTime();
+          let barColor, barFade, nameColor;
+          if (bk.reservation) {
+            barColor  = '#FAC775'; barFade = '#FAEEDA'; nameColor = '#633806';
+          } else if (bk.person === 'johannes') {
+            barColor  = '#9FE1CB'; barFade = '#d0f0e6'; nameColor = '#085041';
+          } else {
+            barColor  = '#B5D4F4'; barFade = '#daeaf8'; nameColor = '#0C447C';
+          }
+          const reservTag = bk.reservation ? ' style="border:1.5px dashed #BA7517;background:' + barFade + '"' : '';
           inner = isFirst
-            ? `<div class="booking-bar" style="background:#B5D4F4"><span class="booking-name">${bk.guest}</span></div>`
-            : `<div class="booking-bar" style="background:#daeaf8"></div>`;
-          inner += `<div class="tooltip-box">${bk.guest}<br>${bk.checkin} → ${bk.checkout}<br>${srcLabel(bk.source)}${bk.note ? '<br>' + bk.note : ''}</div>`;
+            ? `<div class="booking-bar"${reservTag} style="background:${barColor}${bk.reservation ? ';border:1.5px dashed #BA7517' : ''}"><span class="booking-name" style="color:${nameColor}">${bk.reservation ? '? ' : ''}${bk.guest}</span></div>`
+            : `<div class="booking-bar" style="background:${barFade}${bk.reservation ? ';border:1.5px dashed #BA7517' : ''}"></div>`;
+          inner += `<div class="tooltip-box">${bk.reservation ? '⚠️ Reservierung (nicht fix)<br>' : ''}${bk.guest}<br>${bk.checkin} → ${bk.checkout}<br>${srcLabel(bk.source)}${bk.person ? ' · ' + personLabel(bk.person) : ''}${bk.note ? '<br>' + bk.note : ''}</div>`;
         }
         html += `<div class="${cls}" onclick="cellClick('${rid}','${ds}')">${inner}</div>`;
       }
@@ -728,6 +756,8 @@ function openNewModal(rid, date) {
   const n = new Date(date + 'T00:00:00'); n.setDate(n.getDate() + 1);
   document.getElementById('f-checkout').value = isoDate(n);
   document.getElementById('f-source').value = 'direkt';
+  document.getElementById('f-person').value = '';
+  document.getElementById('f-reservation').checked = false;
   document.getElementById('f-note').value = '';
   document.getElementById('delete-btn').style.display = 'none';
   document.getElementById('modal-overlay').classList.add('open');
@@ -742,6 +772,8 @@ function openEditModal(bk) {
   document.getElementById('f-checkin').value = bk.checkin;
   document.getElementById('f-checkout').value = bk.checkout;
   document.getElementById('f-source').value = bk.source || 'direkt';
+  document.getElementById('f-person').value = bk.person || '';
+  document.getElementById('f-reservation').checked = !!bk.reservation;
   document.getElementById('f-note').value = bk.note || '';
   document.getElementById('delete-btn').style.display = 'flex';
   document.getElementById('modal-overlay').classList.add('open');
@@ -758,16 +790,18 @@ function saveBooking() {
   const checkin  = document.getElementById('f-checkin').value;
   const checkout = document.getElementById('f-checkout').value;
   const source   = document.getElementById('f-source').value;
-  const note     = document.getElementById('f-note').value.trim();
+  const person      = document.getElementById('f-person').value;
+  const reservation = document.getElementById('f-reservation').checked;
+  const note        = document.getElementById('f-note').value.trim();
   if (!guest || !checkin || !checkout || checkin >= checkout) {
     alert('Bitte alle Pflichtfelder korrekt ausfüllen.\nAbreise muss nach der Anreise liegen.');
     return;
   }
   if (editingId) {
     const i = bookings.findIndex(b => b.id === editingId);
-    if (i >= 0) bookings[i] = { id: editingId, roomId: rid, guest, checkin, checkout, source, note };
+    if (i >= 0) bookings[i] = { id: editingId, roomId: rid, guest, checkin, checkout, source, person, reservation, note };
   } else {
-    bookings.push({ id: 'b' + Date.now(), roomId: rid, guest, checkin, checkout, source, note });
+    bookings.push({ id: 'b' + Date.now(), roomId: rid, guest, checkin, checkout, source, person, reservation, note });
   }
   saveBookings(); closeModal(); renderCalendar();
 }
