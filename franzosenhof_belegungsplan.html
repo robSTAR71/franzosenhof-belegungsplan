@@ -60,10 +60,63 @@
     padding: 0;
   }
 
+  /* Hero background */
+  .hero-bg {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    background:
+      linear-gradient(to bottom, rgba(0,0,0,0.38) 0%, rgba(0,0,0,0.18) 40%, rgba(0,0,0,0.52) 100%),
+      url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80&auto=format&fit=crop') center center / cover no-repeat;
+    pointer-events: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    .hero-bg {
+      background:
+        linear-gradient(to bottom, rgba(0,0,0,0.55) 0%, rgba(0,0,0,0.35) 40%, rgba(0,0,0,0.70) 100%),
+        url('https://images.unsplash.com/photo-1506905925346-21bda4d32df4?w=1600&q=80&auto=format&fit=crop') center center / cover no-repeat;
+    }
+  }
+
+  /* Page title banner */
+  .page-hero {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    padding: 2.5rem 1rem 1.5rem;
+    color: white;
+  }
+  .page-hero h1 {
+    font-size: 28px;
+    font-weight: 700;
+    letter-spacing: -0.02em;
+    text-shadow: 0 2px 12px rgba(0,0,0,0.4);
+    margin-bottom: 4px;
+  }
+  .page-hero p {
+    font-size: 13px;
+    opacity: 0.82;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-shadow: 0 1px 6px rgba(0,0,0,0.4);
+  }
+  .photo-credit {
+    position: fixed;
+    bottom: 8px;
+    right: 10px;
+    font-size: 10px;
+    color: rgba(255,255,255,0.45);
+    z-index: 1;
+    text-decoration: none;
+  }
+  .photo-credit:hover { color: rgba(255,255,255,0.75); }
+
   .page-wrap {
+    position: relative;
+    z-index: 1;
     max-width: 960px;
     margin: 0 auto;
-    padding: 1.5rem 1rem 3rem;
+    padding: 0 1rem 3rem;
   }
 
   /* Header */
@@ -71,13 +124,21 @@
     display: flex;
     align-items: center;
     justify-content: space-between;
-    margin-bottom: 1.5rem;
+    margin-bottom: 1.25rem;
     flex-wrap: wrap;
     gap: 10px;
-    background: var(--bg);
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
     border-radius: var(--radius-lg);
-    border: 0.5px solid var(--border);
+    border: 0.5px solid rgba(255,255,255,0.6);
     padding: 1rem 1.25rem;
+  }
+  @media (prefers-color-scheme: dark) {
+    .header {
+      background: rgba(30,30,28,0.88);
+      border-color: rgba(255,255,255,0.1);
+    }
   }
   .header-left { display: flex; align-items: center; gap: 12px; }
   .logo {
@@ -127,10 +188,18 @@
     margin-bottom: 1.25rem;
   }
   .stat {
-    background: var(--bg);
-    border: 0.5px solid var(--border);
+    background: rgba(255,255,255,0.82);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border: 0.5px solid rgba(255,255,255,0.55);
     border-radius: var(--radius-lg);
     padding: 12px 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    .stat {
+      background: rgba(30,30,28,0.82);
+      border-color: rgba(255,255,255,0.1);
+    }
   }
   .stat-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
   .stat-value { font-size: 22px; font-weight: 600; color: var(--text); }
@@ -138,12 +207,20 @@
 
   /* Calendar */
   .cal-card {
-    background: var(--bg);
-    border: 0.5px solid var(--border);
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 0.5px solid rgba(255,255,255,0.6);
     border-radius: var(--radius-lg);
     padding: 1rem 1.25rem;
     margin-bottom: 1rem;
     overflow-x: auto;
+  }
+  @media (prefers-color-scheme: dark) {
+    .cal-card {
+      background: rgba(30,30,28,0.88);
+      border-color: rgba(255,255,255,0.1);
+    }
   }
   .calendar { min-width: 640px; }
   .room-label-row { display: flex; align-items: center; margin-bottom: 3px; gap: 4px; }
@@ -207,18 +284,41 @@
   .day-cell:hover .tooltip-box { display: block; }
 
   /* Legend */
-  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .legend {
+    display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 1rem;
+    background: rgba(255,255,255,0.75);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    border: 0.5px solid rgba(255,255,255,0.5);
+    border-radius: var(--radius);
+    padding: 8px 14px;
+    width: fit-content;
+  }
+  @media (prefers-color-scheme: dark) {
+    .legend {
+      background: rgba(30,30,28,0.75);
+      border-color: rgba(255,255,255,0.1);
+    }
+  }
   .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
   .legend-dot { width: 12px; height: 12px; border-radius: 2px; border: 0.5px solid; }
 
   /* Import panel */
   .import-panel {
-    background: var(--bg);
-    border: 0.5px solid var(--border);
+    background: rgba(255,255,255,0.88);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 0.5px solid rgba(255,255,255,0.6);
     border-radius: var(--radius-lg);
     padding: 1.25rem;
     margin-bottom: 1rem;
     display: none;
+  }
+  @media (prefers-color-scheme: dark) {
+    .import-panel {
+      background: rgba(30,30,28,0.88);
+      border-color: rgba(255,255,255,0.1);
+    }
   }
   .import-panel.open { display: block; }
   .import-panel-header {
@@ -356,6 +456,14 @@
 </style>
 </head>
 <body>
+<div class="hero-bg" aria-hidden="true"></div>
+<a href="https://unsplash.com/photos/scenic-austrian-mountains" class="photo-credit" target="_blank" rel="noopener">Foto: Unsplash</a>
+
+<div class="page-hero">
+  <h1>Gasthof Franzosenhof</h1>
+  <p>Belegungsplan &middot; Wullowitz</p>
+</div>
+
 <div class="page-wrap">
 
   <!-- Header -->
@@ -363,8 +471,8 @@
     <div class="header-left">
       <div class="logo">🏠</div>
       <div>
-        <div class="title">Gasthof Franzosenhof</div>
-        <div class="subtitle">Belegungsplan · Wullowitz</div>
+        <div class="title">Belegungsplan</div>
+        <div class="subtitle">Wullowitz &middot; Oberösterreich</div>
       </div>
     </div>
     <div class="toolbar">
