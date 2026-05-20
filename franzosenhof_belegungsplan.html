@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Belegungsplan – Gasthof Franzosenhof</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #ffffff;
+    --bg-secondary: #f5f4f0;
+    --bg-tertiary: #eeedea;
+    --text: #1a1a18;
+    --text-secondary: #5f5e5a;
+    --text-tertiary: #888780;
+    --border: rgba(0,0,0,0.12);
+    --border-md: rgba(0,0,0,0.22);
+    --radius: 8px;
+    --radius-lg: 12px;
+    --blue: #378ADD;
+    --blue-light: #E6F1FB;
+    --blue-mid: #B5D4F4;
+    --blue-dark: #0C447C;
+    --green: #3B6D11;
+    --green-light: #EAF3DE;
+    --red: #A32D2D;
+    --red-light: #FCEBEB;
+    --amber-light: #FAEEDA;
+    --amber-dark: #633806;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --mono: 'Courier New', monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1e1e1c;
+      --bg-secondary: #2a2a28;
+      --bg-tertiary: #333330;
+      --text: #f0efe8;
+      --text-secondary: #b4b2a9;
+      --text-tertiary: #888780;
+      --border: rgba(255,255,255,0.12);
+      --border-md: rgba(255,255,255,0.22);
+      --blue-light: #042C53;
+      --blue-mid: #0C447C;
+      --blue-dark: #B5D4F4;
+      --green-light: #173404;
+      --red-light: #501313;
+      --amber-light: #412402;
+    }
+  }
+
+  body {
+    font-family: var(--font);
+    background: var(--bg-tertiary);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  .page-wrap {
+    max-width: 960px;
+    margin: 0 auto;
+    padding: 1.5rem 1rem 3rem;
+  }
+
+  /* Header */
+  .header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1.5rem;
+    flex-wrap: wrap;
+    gap: 10px;
+    background: var(--bg);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    padding: 1rem 1.25rem;
+  }
+  .header-left { display: flex; align-items: center; gap: 12px; }
+  .logo {
+    width: 42px; height: 42px; border-radius: 50%;
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px;
+  }
+  .title { font-size: 18px; font-weight: 600; color: var(--text); }
+  .subtitle { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+  .toolbar { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+  .nav { display: flex; align-items: center; gap: 4px; }
+  .month-label {
+    font-size: 14px; font-weight: 600;
+    min-width: 155px; text-align: center; color: var(--text);
+  }
+
+  button {
+    font-family: var(--font);
+    cursor: pointer;
+    border-radius: var(--radius);
+    font-size: 13px;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 7px 12px;
+    border: 0.5px solid var(--border-md);
+    background: var(--bg);
+    color: var(--text);
+    transition: background .12s, border-color .12s;
+  }
+  button:hover { background: var(--bg-secondary); }
+  .btn-primary { background: var(--blue); border-color: var(--blue); color: white; }
+  .btn-primary:hover { background: #185FA5; border-color: #185FA5; }
+  .btn-success { background: var(--green); border-color: var(--green); color: white; }
+  .btn-success:hover { background: #27500A; border-color: #27500A; }
+  .btn-danger { background: none; color: var(--red); border-color: var(--red); margin-right: auto; }
+  .btn-icon { padding: 7px 9px; }
+
+  /* Stats */
+  .stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 8px;
+    margin-bottom: 1.25rem;
+  }
+  .stat {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 14px;
+  }
+  .stat-label { font-size: 11px; color: var(--text-secondary); margin-bottom: 4px; }
+  .stat-value { font-size: 22px; font-weight: 600; color: var(--text); }
+  .stat-sub { font-size: 10px; color: var(--text-tertiary); margin-top: 2px; }
+
+  /* Calendar */
+  .cal-card {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    overflow-x: auto;
+  }
+  .calendar { min-width: 640px; }
+  .room-label-row { display: flex; align-items: center; margin-bottom: 3px; gap: 4px; }
+  .room-spacer { width: 120px; min-width: 120px; }
+  .day-headers { display: flex; gap: 2px; flex: 1; }
+  .day-h {
+    flex: 1; font-size: 10px; color: var(--text-tertiary);
+    text-align: center; padding: 2px 0 4px; min-width: 18px;
+  }
+  .day-h.is-today { color: var(--blue); font-weight: 700; }
+  .day-h.is-weekend { color: var(--text-secondary); }
+
+  .section-title {
+    font-size: 10px; font-weight: 600; color: var(--text-tertiary);
+    text-transform: uppercase; letter-spacing: .06em;
+    margin: 12px 0 5px 124px;
+  }
+  .room-row { display: flex; align-items: center; margin-bottom: 3px; gap: 4px; }
+  .room-name {
+    width: 120px; min-width: 120px;
+    font-size: 11px; color: var(--text-secondary);
+    padding-right: 8px; text-align: right;
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  }
+  .room-name strong { display: block; font-size: 12px; color: var(--text); font-weight: 600; }
+  .days-row { display: flex; flex: 1; gap: 2px; }
+  .day-cell {
+    flex: 1; height: 30px;
+    border-radius: 3px;
+    border: 0.5px solid var(--border);
+    background: var(--bg);
+    cursor: pointer;
+    position: relative;
+    min-width: 18px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: visible;
+    transition: border-color .1s;
+  }
+  .day-cell:hover { border-color: var(--blue); z-index: 2; }
+  .day-cell.today { border-color: var(--blue); }
+  .day-cell.booked { background: var(--blue-light); border-color: var(--blue-mid); }
+  .booking-bar {
+    position: absolute; left: 2px; right: 2px; top: 3px; bottom: 3px;
+    border-radius: 2px;
+    display: flex; align-items: center; justify-content: center;
+    overflow: hidden;
+  }
+  .booking-name {
+    font-size: 8px; font-weight: 600; color: var(--blue-dark);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding: 0 2px;
+  }
+  .tooltip-box {
+    position: absolute; bottom: 35px; left: 50%; transform: translateX(-50%);
+    background: #1a1a18; color: #f0efe8;
+    font-size: 11px; padding: 6px 10px;
+    border-radius: 6px; white-space: nowrap;
+    pointer-events: none; z-index: 100;
+    display: none; line-height: 1.5;
+    box-shadow: 0 2px 8px rgba(0,0,0,.25);
+  }
+  .day-cell:hover .tooltip-box { display: block; }
+
+  /* Legend */
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-bottom: 1rem; }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 11px; color: var(--text-secondary); }
+  .legend-dot { width: 12px; height: 12px; border-radius: 2px; border: 0.5px solid; }
+
+  /* Import panel */
+  .import-panel {
+    background: var(--bg);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 1.25rem;
+    margin-bottom: 1rem;
+    display: none;
+  }
+  .import-panel.open { display: block; }
+  .import-panel-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 1rem;
+  }
+  .import-panel-header h3 { font-size: 15px; font-weight: 600; }
+  .import-tabs {
+    display: flex;
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1rem;
+  }
+  .import-tab {
+    flex: 1; background: none; border: none;
+    padding: 8px; cursor: pointer;
+    font-size: 12px; color: var(--text-secondary);
+    font-family: var(--font); border-radius: 0;
+  }
+  .import-tab.active { background: var(--bg-secondary); color: var(--text); font-weight: 600; }
+
+  .drop-zone {
+    border: 1.5px dashed var(--border-md);
+    border-radius: var(--radius);
+    padding: 2rem;
+    text-align: center;
+    cursor: pointer;
+    background: var(--bg-secondary);
+    transition: border-color .15s, background .15s;
+  }
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: var(--blue);
+    background: var(--blue-light);
+  }
+  .drop-zone p { font-size: 13px; color: var(--text-secondary); margin-top: 8px; }
+  .drop-zone small { font-size: 11px; color: var(--text-tertiary); }
+
+  .merge-opts { display: flex; gap: 16px; margin-top: 10px; align-items: center; }
+  .merge-opt {
+    display: flex; align-items: center; gap: 6px;
+    font-size: 12px; color: var(--text-secondary); cursor: pointer;
+  }
+  .merge-opt input { cursor: pointer; }
+
+  .paste-area {
+    width: 100%; min-height: 100px;
+    font-family: var(--mono); font-size: 11px;
+    padding: 8px; border: 0.5px solid var(--border-md);
+    border-radius: var(--radius); background: var(--bg-secondary);
+    color: var(--text); resize: vertical;
+    margin-bottom: 8px;
+  }
+
+  .format-example {
+    background: var(--bg-secondary);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 12px;
+    font-family: var(--mono);
+    font-size: 11px; color: var(--text-secondary);
+    line-height: 1.6; white-space: pre;
+    overflow-x: auto;
+    margin-top: 8px;
+  }
+
+  .preview-section { margin-top: 1rem; display: none; }
+  .preview-section.open { display: block; }
+  .preview-header {
+    display: flex; justify-content: space-between; align-items: center;
+    margin-bottom: 8px; flex-wrap: wrap; gap: 8px;
+  }
+  .preview-scroll { overflow: auto; max-height: 220px; border: 0.5px solid var(--border); border-radius: var(--radius); }
+  table { width: 100%; border-collapse: collapse; font-size: 11px; }
+  th { background: var(--bg-secondary); padding: 6px 8px; text-align: left; color: var(--text-secondary); font-weight: 600; border-bottom: 0.5px solid var(--border); position: sticky; top: 0; }
+  td { padding: 5px 8px; border-bottom: 0.5px solid var(--border); color: var(--text); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
+  tr.row-ok td { background: var(--green-light); }
+  tr.row-err td { background: var(--red-light); }
+
+  .badge {
+    display: inline-block; padding: 2px 8px;
+    border-radius: 10px; font-size: 10px; font-weight: 600;
+  }
+  .badge-ok { background: var(--green-light); color: var(--green); }
+  .badge-err { background: var(--red-light); color: var(--red); }
+  .badge-warn { background: var(--amber-light); color: var(--amber-dark); }
+
+  .import-result {
+    margin-top: 10px; font-size: 13px; color: var(--text-secondary);
+    padding: 10px 12px; background: var(--green-light);
+    border-radius: var(--radius); border: 0.5px solid var(--border);
+    display: none;
+  }
+  .import-result.open { display: block; }
+
+  /* Modal */
+  .modal-overlay {
+    display: none;
+    position: fixed; inset: 0;
+    background: rgba(0,0,0,.45);
+    z-index: 200;
+    align-items: center; justify-content: center;
+    padding: 1rem;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg);
+    border-radius: var(--radius-lg);
+    border: 0.5px solid var(--border);
+    padding: 1.5rem;
+    width: 420px; max-width: 100%;
+    max-height: 90vh; overflow-y: auto;
+  }
+  .modal h3 { font-size: 16px; font-weight: 600; margin-bottom: 1.25rem; }
+  .form-row { margin-bottom: 12px; }
+  .form-row label { display: block; font-size: 12px; color: var(--text-secondary); margin-bottom: 4px; }
+  .form-row input, .form-row select, .form-row textarea {
+    width: 100%; font-size: 13px; padding: 8px 10px;
+    border: 0.5px solid var(--border-md);
+    border-radius: var(--radius);
+    background: var(--bg-secondary); color: var(--text);
+    font-family: var(--font);
+  }
+  .form-row textarea { resize: vertical; min-height: 60px; }
+  .form-2col { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .form-actions {
+    display: flex; gap: 8px; margin-top: 1.25rem;
+    justify-content: flex-end; flex-wrap: wrap;
+  }
+
+  /* Info table in format tab */
+  .info-table { width: 100%; border-collapse: collapse; font-size: 12px; margin-bottom: 10px; }
+  .info-table th { background: var(--bg-secondary); padding: 6px 10px; text-align: left; color: var(--text-secondary); font-weight: 600; border-bottom: 0.5px solid var(--border); }
+  .info-table td { padding: 6px 10px; border-bottom: 0.5px solid var(--border); color: var(--text); }
+</style>
+</head>
+<body>
+<div class="page-wrap">
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="logo">🏠</div>
+      <div>
+        <div class="title">Gasthof Franzosenhof</div>
+        <div class="subtitle">Belegungsplan · Wullowitz</div>
+      </div>
+    </div>
+    <div class="toolbar">
+      <div class="nav">
+        <button class="btn-icon" id="prev-month" title="Vorheriger Monat">&#8249;</button>
+        <span class="month-label" id="month-label"></span>
+        <button class="btn-icon" id="next-month" title="Nächster Monat">&#8250;</button>
+      </div>
+      <button class="btn-success" id="import-btn">&#8679; Import</button>
+      <button class="btn-primary" id="add-btn">+ Buchung</button>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats" id="stats-bar"></div>
+
+  <!-- Import Panel -->
+  <div class="import-panel" id="import-panel">
+    <div class="import-panel-header">
+      <h3>Daten importieren</h3>
+      <button id="close-import">&#10005;</button>
+    </div>
+    <div class="import-tabs">
+      <button class="import-tab active" data-tab="upload">Datei hochladen</button>
+      <button class="import-tab" data-tab="paste">Text einfügen</button>
+      <button class="import-tab" data-tab="format">Formatvorgabe</button>
+    </div>
+
+    <div id="tab-upload">
+      <div class="drop-zone" id="drop-zone">
+        <div style="font-size:32px;color:var(--text-tertiary)">📄</div>
+        <p>CSV oder Excel-Datei hierher ziehen</p>
+        <small>oder klicken zum Auswählen &middot; .csv / .xlsx / .xls</small>
+        <input type="file" id="file-input" accept=".csv,.xlsx,.xls,.txt" style="display:none">
+      </div>
+      <div class="merge-opts">
+        <span style="font-size:12px;color:var(--text-secondary)">Importmodus:</span>
+        <label class="merge-opt"><input type="radio" name="merge" value="merge" checked> Zusammenführen</label>
+        <label class="merge-opt"><input type="radio" name="merge" value="replace"> Ersetzen (alle bisherigen Daten löschen)</label>
+      </div>
+    </div>
+
+    <div id="tab-paste" style="display:none">
+      <textarea class="paste-area" id="paste-input" placeholder="CSV hier einfügen, z.B.:&#10;Zimmer,Gast,Anreise,Abreise,Quelle&#10;Doppelzimmer 1,Familie Müller,01.06.2025,05.06.2025,Booking"></textarea>
+      <button class="btn-primary" id="parse-paste-btn">Vorschau anzeigen</button>
+    </div>
+
+    <div id="tab-format" style="display:none">
+      <p style="font-size:13px;color:var(--text-secondary);margin-bottom:10px">Die Importdatei muss folgende Spalten enthalten (Reihenfolge ist beliebig):</p>
+      <table class="info-table">
+        <thead><tr><th>Spaltenname</th><th>Pflicht</th><th>Beispielwert</th></tr></thead>
+        <tbody>
+          <tr><td><strong>Zimmer</strong></td><td><span class="badge badge-err">Ja</span></td><td>Doppelzimmer 1</td></tr>
+          <tr><td><strong>Gast</strong></td><td><span class="badge badge-err">Ja</span></td><td>Familie Müller</td></tr>
+          <tr><td><strong>Anreise</strong></td><td><span class="badge badge-err">Ja</span></td><td>01.06.2025 oder 2025-06-01</td></tr>
+          <tr><td><strong>Abreise</strong></td><td><span class="badge badge-err">Ja</span></td><td>05.06.2025 oder 2025-06-05</td></tr>
+          <tr><td><strong>Quelle</strong></td><td><span class="badge badge-warn">Optional</span></td><td>Booking, Direkt, Telefon…</td></tr>
+          <tr><td><strong>Notiz</strong></td><td><span class="badge badge-warn">Optional</span></td><td>Frühstück gewünscht</td></tr>
+        </tbody>
+      </table>
+      <div class="format-example">Zimmer,Gast,Anreise,Abreise,Quelle,Notiz
+Doppelzimmer 1,Familie Müller,01.06.2025,05.06.2025,Booking,
+Doppelzimmer 2,Herr Novak,2025-06-10,2025-06-12,Direkt,Einzelbett gewünscht
+Doppelzimmer 3,Hr.+Fr. Bauer,15.06.2025,20.06.2025,Telefon,
+Einzelzimmer 1,Fr. Wagner,08.06.2025,09.06.2025,Booking,
+Familienzimmer,Familie Schmidt,22.06.2025,28.06.2025,Direkt,4 Personen</div>
+      <p style="font-size:11px;color:var(--text-tertiary);margin-top:8px">Trennzeichen: Komma oder Semikolon &middot; Datumsformat: TT.MM.JJJJ oder JJJJ-MM-TT</p>
+    </div>
+
+    <div class="preview-section" id="preview-section">
+      <div class="preview-header">
+        <span style="font-size:13px;font-weight:600" id="preview-summary"></span>
+        <button class="btn-success" id="confirm-import">&#10003; Jetzt importieren</button>
+      </div>
+      <div class="preview-scroll">
+        <table id="preview-table">
+          <thead><tr><th>Zimmer</th><th>Gast</th><th>Anreise</th><th>Abreise</th><th>Quelle</th><th>Status</th></tr></thead>
+          <tbody id="preview-body"></tbody>
+        </table>
+      </div>
+      <div class="import-result" id="import-result"></div>
+    </div>
+  </div>
+
+  <!-- Calendar -->
+  <div class="cal-card">
+    <div class="calendar" id="calendar"></div>
+  </div>
+
+  <!-- Legend -->
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot" style="background:#E6F1FB;border-color:#85B7EB"></div>Belegt</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#378ADD;border-color:#378ADD"></div>Heute</div>
+    <div class="legend-item"><div class="legend-dot" style="background:var(--bg);border-color:var(--border)"></div>Frei</div>
+  </div>
+
+</div>
+
+<!-- Booking Modal -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal">
+    <h3 id="modal-title">Neue Buchung</h3>
+    <div class="form-row">
+      <label>Zimmer</label>
+      <select id="f-room"></select>
+    </div>
+    <div class="form-row">
+      <label>Gast</label>
+      <input type="text" id="f-guest" placeholder="Name des Gastes">
+    </div>
+    <div class="form-2col">
+      <div class="form-row"><label>Anreise</label><input type="date" id="f-checkin"></div>
+      <div class="form-row"><label>Abreise</label><input type="date" id="f-checkout"></div>
+    </div>
+    <div class="form-row">
+      <label>Buchungsquelle</label>
+      <select id="f-source">
+        <option value="booking">Booking.com</option>
+        <option value="direkt">Direkt</option>
+        <option value="telefon">Telefon</option>
+        <option value="email">E-Mail</option>
+        <option value="website">Website</option>
+      </select>
+    </div>
+    <div class="form-row">
+      <label>Notiz (optional)</label>
+      <textarea id="f-note" placeholder="Sonderwünsche, Allergien, Anmerkungen…"></textarea>
+    </div>
+    <div class="form-actions">
+      <button class="btn-danger" id="delete-btn" style="display:none">&#128465; Löschen</button>
+      <button id="cancel-btn">Abbrechen</button>
+      <button class="btn-primary" id="save-btn">Speichern</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ========== DATA ========== */
+const ROOMS = [
+  { id: 'dz1', name: 'Doppelzimmer 1', beds: 2 },
+  { id: 'dz2', name: 'Doppelzimmer 2', beds: 2 },
+  { id: 'dz3', name: 'Doppelzimmer 3', beds: 2 },
+  { id: 'ez1', name: 'Einzelzimmer 1', beds: 1 },
+  { id: 'fz1', name: 'Familienzimmer',  beds: 4 },
+];
+
+const ROOM_ALIASES = {
+  'doppelzimmer 1':'dz1','doppelzimmer1':'dz1','dz1':'dz1','dz 1':'dz1',
+  'doppelzimmer 2':'dz2','doppelzimmer2':'dz2','dz2':'dz2','dz 2':'dz2',
+  'doppelzimmer 3':'dz3','doppelzimmer3':'dz3','dz3':'dz3','dz 3':'dz3',
+  'einzelzimmer 1':'ez1','einzelzimmer1':'ez1','ez1':'ez1','ez 1':'ez1','einzelzimmer':'ez1',
+  'familienzimmer':'fz1','fz1':'fz1','familie':'fz1','fz 1':'fz1',
+};
+
+const STORAGE_KEY = 'franzosenhof_belegung_v1';
+let bookings = [];
+let currentYear, currentMonth;
+let editingId = null;
+let pendingRows = [];
+
+/* ========== STORAGE ========== */
+function loadBookings() {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (raw) { bookings = JSON.parse(raw); return; }
+  } catch (e) {}
+  bookings = sampleData();
+  saveBookings();
+}
+
+function saveBookings() {
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(bookings)); } catch (e) {}
+}
+
+function sampleData() {
+  const n = new Date(), y = n.getFullYear(), m = n.getMonth();
+  return [
+    { id:'s1', roomId:'dz1', guest:'Familie Müller',   checkin:fd(y,m,3),  checkout:fd(y,m,6),  source:'booking', note:'' },
+    { id:'s2', roomId:'dz2', guest:'Herr Novak',       checkin:fd(y,m,10), checkout:fd(y,m,12), source:'telefon', note:'Einzelbett' },
+    { id:'s3', roomId:'fz1', guest:'Familie Schmidt',  checkin:fd(y,m,14), checkout:fd(y,m,19), source:'direkt',  note:'' },
+    { id:'s4', roomId:'ez1', guest:'Fr. Wagner',       checkin:fd(y,m,8),  checkout:fd(y,m,9),  source:'booking', note:'' },
+    { id:'s5', roomId:'dz3', guest:'Hr.+Fr. Bauer',    checkin:fd(y,m,20), checkout:fd(y,m,23), source:'email',   note:'' },
+  ];
+}
+
+/* ========== UTILS ========== */
+function fd(y, m, d) {
+  return `${y}-${String(m+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+}
+function isoDate(d) { return d.toISOString().split('T')[0]; }
+function parseDate(s) { return new Date(s + 'T00:00:00'); }
+function daysInMonth(y, m) { return new Date(y, m+1, 0).getDate(); }
+
+function isBooked(roomId, dateStr) {
+  return bookings.find(b => {
+    if (b.roomId !== roomId) return false;
+    const ci = parseDate(b.checkin), co = parseDate(b.checkout), d = parseDate(dateStr);
+    return d >= ci && d < co;
+  });
+}
+
+function srcLabel(s) {
+  return { booking:'Booking.com', direkt:'Direkt', telefon:'Telefon', email:'E-Mail', website:'Website' }[s] || s;
+}
+
+/* ========== CALENDAR ========== */
+function renderCalendar() {
+  const days = daysInMonth(currentYear, currentMonth);
+  const today = isoDate(new Date());
+  const cal = document.getElementById('calendar');
+
+  let html = '<div class="room-label-row"><div class="room-spacer"></div><div class="day-headers">';
+  for (let d = 1; d <= days; d++) {
+    const ds = fd(currentYear, currentMonth, d);
+    const dow = parseDate(ds).getDay();
+    const cls = ds === today ? 'day-h is-today' : (dow === 0 || dow === 6 ? 'day-h is-weekend' : 'day-h');
+    html += `<div class="${cls}">${d}</div>`;
+  }
+  html += '</div></div>';
+
+  const groups = [
+    { label: 'Doppelzimmer', ids: ['dz1','dz2','dz3'] },
+    { label: 'Einzelzimmer', ids: ['ez1'] },
+    { label: 'Familienzimmer', ids: ['fz1'] },
+  ];
+
+  for (const g of groups) {
+    html += `<div class="section-title">${g.label}</div>`;
+    for (const rid of g.ids) {
+      const rm = ROOMS.find(r => r.id === rid);
+      html += `<div class="room-row">
+        <div class="room-name"><strong>${rm.name}</strong><span>${rm.beds} Bett${rm.beds > 1 ? 'en' : ''}</span></div>
+        <div class="days-row">`;
+      for (let d = 1; d <= days; d++) {
+        const ds = fd(currentYear, currentMonth, d);
+        const bk = isBooked(rid, ds);
+        let cls = 'day-cell' + (bk ? ' booked' : '') + (ds === today ? ' today' : '');
+        let inner = '';
+        if (bk) {
+          const isFirst = parseDate(ds).getTime() === parseDate(bk.checkin).getTime();
+          inner = isFirst
+            ? `<div class="booking-bar" style="background:#B5D4F4"><span class="booking-name">${bk.guest}</span></div>`
+            : `<div class="booking-bar" style="background:#daeaf8"></div>`;
+          inner += `<div class="tooltip-box">${bk.guest}<br>${bk.checkin} → ${bk.checkout}<br>${srcLabel(bk.source)}${bk.note ? '<br>' + bk.note : ''}</div>`;
+        }
+        html += `<div class="${cls}" onclick="cellClick('${rid}','${ds}')">${inner}</div>`;
+      }
+      html += `</div></div>`;
+    }
+  }
+  cal.innerHTML = html;
+  renderStats();
+}
+
+function renderStats() {
+  const days = daysInMonth(currentYear, currentMonth);
+  const today = isoDate(new Date());
+  let total = 0, booked = 0;
+  for (const r of ROOMS) {
+    for (let d = 1; d <= days; d++) {
+      total++;
+      if (isBooked(r.id, fd(currentYear, currentMonth, d))) booked++;
+    }
+  }
+  const pct = Math.round(booked / total * 100);
+  const arrivals = bookings.filter(b => {
+    const [y, m] = b.checkin.split('-').map(Number);
+    return y === currentYear && m - 1 === currentMonth;
+  }).length;
+  const freeNow = ROOMS.filter(r => !isBooked(r.id, today)).length;
+
+  document.getElementById('stats-bar').innerHTML = `
+    <div class="stat"><div class="stat-label">Auslastung</div><div class="stat-value">${pct}%</div><div class="stat-sub">${booked}/${total} Nächte belegt</div></div>
+    <div class="stat"><div class="stat-label">Ankünfte</div><div class="stat-value">${arrivals}</div><div class="stat-sub">diesen Monat</div></div>
+    <div class="stat"><div class="stat-label">Buchungen gesamt</div><div class="stat-value">${bookings.length}</div><div class="stat-sub">im System</div></div>
+    <div class="stat"><div class="stat-label">Frei heute</div><div class="stat-value">${freeNow}</div><div class="stat-sub">Zimmer verfügbar</div></div>`;
+}
+
+function updateMonthLabel() {
+  const names = ['Januar','Februar','März','April','Mai','Juni','Juli','August','September','Oktober','November','Dezember'];
+  document.getElementById('month-label').textContent = `${names[currentMonth]} ${currentYear}`;
+}
+
+/* ========== MODAL ========== */
+function cellClick(roomId, date) {
+  const bk = isBooked(roomId, date);
+  bk ? openEditModal(bk) : openNewModal(roomId, date);
+}
+
+function openNewModal(rid, date) {
+  editingId = null;
+  document.getElementById('modal-title').textContent = 'Neue Buchung';
+  document.getElementById('f-room').value = rid;
+  document.getElementById('f-guest').value = '';
+  document.getElementById('f-checkin').value = date;
+  const n = new Date(date + 'T00:00:00'); n.setDate(n.getDate() + 1);
+  document.getElementById('f-checkout').value = isoDate(n);
+  document.getElementById('f-source').value = 'direkt';
+  document.getElementById('f-note').value = '';
+  document.getElementById('delete-btn').style.display = 'none';
+  document.getElementById('modal-overlay').classList.add('open');
+  setTimeout(() => document.getElementById('f-guest').focus(), 50);
+}
+
+function openEditModal(bk) {
+  editingId = bk.id;
+  document.getElementById('modal-title').textContent = 'Buchung bearbeiten';
+  document.getElementById('f-room').value = bk.roomId;
+  document.getElementById('f-guest').value = bk.guest;
+  document.getElementById('f-checkin').value = bk.checkin;
+  document.getElementById('f-checkout').value = bk.checkout;
+  document.getElementById('f-source').value = bk.source || 'direkt';
+  document.getElementById('f-note').value = bk.note || '';
+  document.getElementById('delete-btn').style.display = 'flex';
+  document.getElementById('modal-overlay').classList.add('open');
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('open');
+  editingId = null;
+}
+
+function saveBooking() {
+  const rid      = document.getElementById('f-room').value;
+  const guest    = document.getElementById('f-guest').value.trim();
+  const checkin  = document.getElementById('f-checkin').value;
+  const checkout = document.getElementById('f-checkout').value;
+  const source   = document.getElementById('f-source').value;
+  const note     = document.getElementById('f-note').value.trim();
+  if (!guest || !checkin || !checkout || checkin >= checkout) {
+    alert('Bitte alle Pflichtfelder korrekt ausfüllen.\nAbreise muss nach der Anreise liegen.');
+    return;
+  }
+  if (editingId) {
+    const i = bookings.findIndex(b => b.id === editingId);
+    if (i >= 0) bookings[i] = { id: editingId, roomId: rid, guest, checkin, checkout, source, note };
+  } else {
+    bookings.push({ id: 'b' + Date.now(), roomId: rid, guest, checkin, checkout, source, note });
+  }
+  saveBookings(); closeModal(); renderCalendar();
+}
+
+function deleteBooking() {
+  if (!editingId || !confirm('Diese Buchung wirklich löschen?')) return;
+  bookings = bookings.filter(b => b.id !== editingId);
+  saveBookings(); closeModal(); renderCalendar();
+}
+
+/* ========== IMPORT ========== */
+function normalizeDate(s) {
+  if (!s) return null;
+  s = String(s).trim();
+  let m;
+  if ((m = s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)))
+    return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)))
+    return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  if ((m = s.match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/)))
+    return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;
+  if (!isNaN(s) && s.length <= 5) {
+    const epoch = new Date((parseInt(s) - 25569) * 86400000);
+    return isoDate(epoch);
+  }
+  return null;
+}
+
+function resolveRoom(s) {
+  if (!s) return null;
+  return ROOM_ALIASES[String(s).toLowerCase().trim()] || null;
+}
+
+function parseCSVText(text) {
+  const sep = (text.split(';').length > text.split(',').length) ? ';' : ',';
+  const lines = text.trim().split(/\r?\n/).filter(l => l.trim());
+  if (lines.length < 2) return [];
+  const headers = lines[0].split(sep).map(h => h.trim().replace(/^["']|["']$/g,'').toLowerCase());
+  const col = k => headers.findIndex(h => h === k || h.includes(k));
+  const ci = col('zimmer'), cg = col('gast'), cca = col('anreise'), cco = col('abreise');
+  const cs = col('quelle'), cn = col('notiz');
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = lines[i].split(sep).map(v => v.trim().replace(/^["']|["']$/g,''));
+    rows.push({
+      zimmer:  ci >= 0  ? vals[ci]  : '',
+      gast:    cg >= 0  ? vals[cg]  : '',
+      anreise: cca >= 0 ? vals[cca] : '',
+      abreise: cco >= 0 ? vals[cco] : '',
+      quelle:  cs >= 0  ? vals[cs]  : 'direkt',
+      notiz:   cn >= 0  ? vals[cn]  : '',
+    });
+  }
+  return rows;
+}
+
+function parseXLSX(buffer) {
+  const wb = XLSX.read(buffer, { type:'array' });
+  const ws = wb.Sheets[wb.SheetNames[0]];
+  const data = XLSX.utils.sheet_to_json(ws, { defval:'' });
+  return data.map(row => {
+    const k = {};
+    for (const key of Object.keys(row)) k[key.toLowerCase().trim()] = row[key];
+    return {
+      zimmer:  k['zimmer']  || '',
+      gast:    k['gast']    || '',
+      anreise: k['anreise'] || '',
+      abreise: k['abreise'] || '',
+      quelle:  k['quelle']  || 'direkt',
+      notiz:   k['notiz']   || '',
+    };
+  });
+}
+
+function validateRows(rows) {
+  return rows.map(r => {
+    const rid = resolveRoom(r.zimmer);
+    const ci  = normalizeDate(r.anreise);
+    const co  = normalizeDate(r.abreise);
+    const issues = [];
+    if (!rid) issues.push('Zimmer unbekannt');
+    if (!ci)  issues.push('Anreisedatum ungültig');
+    if (!co)  issues.push('Abreisedatum ungültig');
+    if (ci && co && ci >= co) issues.push('Abreise ≤ Anreise');
+    return { ...r, roomId: rid, checkinNorm: ci, checkoutNorm: co, status: issues.length ? 'err' : 'ok', issues };
+  });
+}
+
+function showPreview(rows) {
+  const validated = validateRows(rows);
+  pendingRows = validated;
+  const ok  = validated.filter(r => r.status === 'ok').length;
+  const err = validated.filter(r => r.status === 'err').length;
+  document.getElementById('preview-summary').innerHTML =
+    `<span class="badge badge-ok">${ok} importierbar</span>&nbsp;` +
+    (err ? `<span class="badge badge-err">${err} Fehler</span>` : '');
+  document.getElementById('preview-body').innerHTML = validated.map(r => `
+    <tr class="row-${r.status}">
+      <td>${r.zimmer}</td><td>${r.gast}</td><td>${r.anreise}</td><td>${r.abreise}</td><td>${r.quelle}</td>
+      <td>${r.status === 'ok'
+        ? '<span class="badge badge-ok">OK</span>'
+        : `<span class="badge badge-err">${r.issues.join(', ')}</span>`}</td>
+    </tr>`).join('');
+  document.getElementById('preview-section').classList.add('open');
+  document.getElementById('import-result').classList.remove('open');
+}
+
+function confirmImport() {
+  const valid = pendingRows.filter(r => r.status === 'ok');
+  const mode  = document.querySelector('input[name="merge"]:checked')?.value || 'merge';
+  if (mode === 'replace') bookings = [];
+  let added = 0, skipped = 0;
+  for (const r of valid) {
+    const dup = bookings.find(b => b.roomId === r.roomId && b.checkin === r.checkinNorm && b.guest === r.gast);
+    if (dup) { skipped++; continue; }
+    bookings.push({
+      id:       'i' + Date.now() + Math.random().toString(36).slice(2,6),
+      roomId:   r.roomId,
+      guest:    r.gast,
+      checkin:  r.checkinNorm,
+      checkout: r.checkoutNorm,
+      source:   r.quelle || 'import',
+      note:     r.notiz  || '',
+    });
+    added++;
+  }
+  saveBookings(); renderCalendar();
+  const res = document.getElementById('import-result');
+  res.classList.add('open');
+  res.innerHTML = `✓ <strong>${added}</strong> Buchung${added !== 1 ? 'en' : ''} importiert` +
+    (skipped ? `, ${skipped} Duplikat${skipped !== 1 ? 'e' : ''} übersprungen` : '') +
+    (mode === 'replace' ? ' (vorherige Daten ersetzt)' : '') + '.';
+  pendingRows = [];
+}
+
+function processFile(file) {
+  const ext = file.name.split('.').pop().toLowerCase();
+  if (ext === 'csv' || ext === 'txt') {
+    const reader = new FileReader();
+    reader.onload = e => showPreview(parseCSVText(e.target.result));
+    reader.readAsText(file, 'UTF-8');
+  } else if (ext === 'xlsx' || ext === 'xls') {
+    if (typeof XLSX === 'undefined') { alert('Excel-Parser lädt noch, bitte kurz warten.'); return; }
+    const reader = new FileReader();
+    reader.onload = e => showPreview(parseXLSX(new Uint8Array(e.target.result)));
+    reader.readAsArrayBuffer(file);
+  } else {
+    alert('Bitte eine CSV- oder Excel-Datei auswählen.');
+  }
+}
+
+/* ========== EVENT LISTENERS ========== */
+document.getElementById('prev-month').onclick = () => {
+  if (--currentMonth < 0) { currentMonth = 11; currentYear--; }
+  updateMonthLabel(); renderCalendar();
+};
+document.getElementById('next-month').onclick = () => {
+  if (++currentMonth > 11) { currentMonth = 0; currentYear++; }
+  updateMonthLabel(); renderCalendar();
+};
+document.getElementById('add-btn').onclick = () => openNewModal(ROOMS[0].id, isoDate(new Date()));
+document.getElementById('cancel-btn').onclick = closeModal;
+document.getElementById('save-btn').onclick = saveBooking;
+document.getElementById('delete-btn').onclick = deleteBooking;
+document.getElementById('modal-overlay').onclick = e => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+};
+
+document.getElementById('import-btn').onclick = () => {
+  const p = document.getElementById('import-panel');
+  p.classList.toggle('open');
+  document.getElementById('preview-section').classList.remove('open');
+};
+document.getElementById('close-import').onclick = () => {
+  document.getElementById('import-panel').classList.remove('open');
+};
+
+document.querySelectorAll('.import-tab').forEach(tab => {
+  tab.onclick = () => {
+    document.querySelectorAll('.import-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    ['upload','paste','format'].forEach(id => {
+      document.getElementById('tab-' + id).style.display = tab.dataset.tab === id ? 'block' : 'none';
+    });
+    document.getElementById('preview-section').classList.remove('open');
+  };
+});
+
+const dz = document.getElementById('drop-zone');
+dz.onclick = () => document.getElementById('file-input').click();
+dz.ondragover = e => { e.preventDefault(); dz.classList.add('drag-over'); };
+dz.ondragleave = () => dz.classList.remove('drag-over');
+dz.ondrop = e => {
+  e.preventDefault(); dz.classList.remove('drag-over');
+  const f = e.dataTransfer.files[0]; if (f) processFile(f);
+};
+document.getElementById('file-input').onchange = e => {
+  if (e.target.files[0]) processFile(e.target.files[0]);
+};
+document.getElementById('parse-paste-btn').onclick = () => {
+  const txt = document.getElementById('paste-input').value;
+  if (!txt.trim()) { alert('Bitte CSV-Text einfügen.'); return; }
+  showPreview(parseCSVText(txt));
+};
+document.getElementById('confirm-import').onclick = confirmImport;
+
+/* ========== INIT ========== */
+const roomSel = document.getElementById('f-room');
+roomSel.innerHTML = ROOMS.map(r => `<option value="${r.id}">${r.name}</option>`).join('');
+
+const now = new Date();
+currentYear = now.getFullYear();
+currentMonth = now.getMonth();
+updateMonthLabel();
+loadBookings();
+renderCalendar();
+</script>
+</body>
+</html>
