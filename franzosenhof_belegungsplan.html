@@ -255,7 +255,7 @@ const ROOMS=[{id:'dz1',name:'Doppelzimmer 1',beds:2},{id:'dz2',name:'Doppelzimme
 const ALIASES={'doppelzimmer 1':'dz1','doppelzimmer1':'dz1','dz1':'dz1','dz 1':'dz1','doppelzimmer 2':'dz2','doppelzimmer2':'dz2','dz2':'dz2','dz 2':'dz2','doppelzimmer 3':'dz3','doppelzimmer3':'dz3','dz3':'dz3','dz 3':'dz3','einzelzimmer 1':'ez1','einzelzimmer1':'ez1','ez1':'ez1','ez 1':'ez1','einzelzimmer':'ez1','familienzimmer':'fz1','fz1':'fz1','familie':'fz1','fz 1':'fz1'};
 const SK='franzosenhof_v4';
 let bookings=[],currentYear,currentMonth,editingId=null,pendingRows=[];
-async function load(){try{const r=await window.storage.get(SK);if(r&&r.value)bookings=JSON.parse(r.value);}catch(e){bookings=sample();save();}}
+async function load(){try{const r=await window.storage.get(SK);if(r&&r.value)bookings=JSON.parse(r.value);}catch(e){bookings=[];}}
 async function save(){try{await window.storage.set(SK,JSON.stringify(bookings));}catch(e){}}
 function sample(){const n=new Date(),y=n.getFullYear(),m=n.getMonth();return[
   {id:'s1',roomId:'dz1',guest:'Familie Müller',checkin:fd(y,m,3),checkout:fd(y,m,6),source:'booking',person:'evelyn',reservation:false,note:''},
@@ -294,7 +294,7 @@ function renderCalendar(){
           inner=isFirst?'<div class="booking-bar" style="background:'+bc+bo+'"><span class="booking-name" style="color:'+nc+'">'+(bk.reservation?'? ':'')+bk.guest+'</span></div>':'<div class="booking-bar" style="background:'+bf+bo+'"></div>';
           inner+='<div class="tooltip-box">'+(bk.reservation?'⚠️ Reservierung<br>':'')+bk.guest+'<br>'+bk.checkin+' → '+bk.checkout+'<br>'+srcLabel(bk.source)+(bk.person?' · '+personLabel(bk.person):'')+(bk.note?'<br>'+bk.note:'')+'</div>';
         }
-        html+='<div class="'+cls+'" onclick="cellClick(''+rid+'',''+ds+'')">'+inner+'</div>';
+        html+='<div class="'+cls+'" onclick="cellClick(\'+rid+\',\'+ds+\')">'+inner+'</div>';
       }
       html+='</div></div>';
     }
@@ -343,9 +343,7 @@ function saveBooking(){
 function deleteBooking(){if(!editingId||!confirm('Buchung wirklich löschen?'))return;bookings=bookings.filter(b=>b.id!==editingId);save();closeModal();renderCalendar();}
 function normalizeDate(s){if(!s)return null;s=String(s).trim();let m;if((m=s.match(/^(\d{1,2})\.(\d{1,2})\.(\d{4})$/)))return m[3]+'-'+m[2].padStart(2,'0')+'-'+m[1].padStart(2,'0');if((m=s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/)))return m[1]+'-'+m[2].padStart(2,'0')+'-'+m[3].padStart(2,'0');return null;}
 function resolveRoom(s){return s?ALIASES[String(s).toLowerCase().trim()]||null:null;}
-function parseCSVText(text){const sep=text.split(';').length>text.split(',').length?';':',';const lines=text.trim().split(/
-?
-/).filter(l=>l.trim());if(lines.length<2)return[];const headers=lines[0].split(sep).map(h=>h.trim().replace(/['"]/g,'').toLowerCase());const col=k=>headers.findIndex(h=>h===k||h.includes(k));const ci=col('zimmer'),cg=col('gast'),cca=col('anreise'),cco=col('abreise'),cs=col('quelle'),cn=col('notiz');return lines.slice(1).map(line=>{const v=line.split(sep).map(x=>x.trim().replace(/['"]/g,''));return{zimmer:ci>=0?v[ci]:'',gast:cg>=0?v[cg]:'',anreise:cca>=0?v[cca]:'',abreise:cco>=0?v[cco]:'',quelle:cs>=0?v[cs]:'direkt',notiz:cn>=0?v[cn]:''}});}
+function parseCSVText(text){const sep=text.split(';').length>text.split(',').length?';':',';const lines=text.trim().split(/\r?\n/).filter(l=>l.trim());if(lines.length<2)return[];const headers=lines[0].split(sep).map(h=>h.trim().replace(/['"]/g,'').toLowerCase());const col=k=>headers.findIndex(h=>h===k||h.includes(k));const ci=col('zimmer'),cg=col('gast'),cca=col('anreise'),cco=col('abreise'),cs=col('quelle'),cn=col('notiz');return lines.slice(1).map(line=>{const v=line.split(sep).map(x=>x.trim().replace(/['"]/g,''));return{zimmer:ci>=0?v[ci]:'',gast:cg>=0?v[cg]:'',anreise:cca>=0?v[cca]:'',abreise:cco>=0?v[cco]:'',quelle:cs>=0?v[cs]:'direkt',notiz:cn>=0?v[cn]:''}});}
 function parseXLSX(buf){const wb=XLSX.read(buf,{type:'array'}),ws=wb.Sheets[wb.SheetNames[0]],data=XLSX.utils.sheet_to_json(ws,{defval:''});return data.map(row=>{const k={};for(const key of Object.keys(row))k[key.toLowerCase().trim()]=row[key];return{zimmer:k['zimmer']||'',gast:k['gast']||'',anreise:k['anreise']||'',abreise:k['abreise']||'',quelle:k['quelle']||'direkt',notiz:k['notiz']||''}});}
 function validateRows(rows){return rows.map(r=>{const rid=resolveRoom(r.zimmer),ci=normalizeDate(r.anreise),co=normalizeDate(r.abreise);const issues=[];if(!rid)issues.push('Zimmer unbekannt');if(!ci)issues.push('Anreise ungültig');if(!co)issues.push('Abreise ungültig');if(ci&&co&&ci>=co)issues.push('Abreise ≤ Anreise');return{...r,roomId:rid,checkinNorm:ci,checkoutNorm:co,status:issues.length?'err':'ok',issues};});}
 function showPreview(rows){const v=validateRows(rows);pendingRows=v;const ok=v.filter(r=>r.status==='ok').length,err=v.filter(r=>r.status==='err').length;document.getElementById('preview-summary').innerHTML='<span class="badge badge-ok">'+ok+' importierbar</span>&nbsp;'+(err?'<span class="badge badge-err">'+err+' Fehler</span>':'');document.getElementById('preview-body').innerHTML=v.map(r=>'<tr class="row-'+r.status+'"><td>'+r.zimmer+'</td><td>'+r.gast+'</td><td>'+r.anreise+'</td><td>'+r.abreise+'</td><td>'+r.quelle+'</td><td>'+(r.status==='ok'?'<span class="badge badge-ok">OK</span>':'<span class="badge badge-err">'+r.issues.join(', ')+'</span>')+'</td></tr>').join('');document.getElementById('preview-section').classList.add('open');document.getElementById('import-result').classList.remove('open');}
