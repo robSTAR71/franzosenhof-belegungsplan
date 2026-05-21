@@ -133,98 +133,12 @@
   .form-row-check label{margin:0;cursor:pointer;font-size:13px;color:var(--text)}
   .form-actions{display:flex;gap:8px;margin-top:1.25rem;justify-content:flex-end;flex-wrap:wrap}
   /* Sync Badge */
-  .sync-badge{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px;border:.5px solid transparent;transition:all .2s;cursor:pointer;white-space:nowrap}
-  .sync-ok{background:#EAF3DE;color:#3B6D11;border-color:#b2d98b}
-  .sync-warn{background:#FAEEDA;color:#633806;border-color:#F0C070}
-  .sync-badge:hover{filter:brightness(.95)}
-  /* Firebase / Sync Modal */
-  .fb-modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:300;align-items:center;justify-content:center;padding:1rem}
-  .fb-modal-overlay.open{display:flex}
-  .fb-modal{background:var(--bg);border-radius:var(--radius-lg);padding:1.5rem;max-width:500px;width:100%;box-shadow:0 8px 32px rgba(0,0,0,.25);border:.5px solid var(--border-md);max-height:90vh;overflow-y:auto}
-  .fb-modal h3{font-size:16px;margin-bottom:.75rem;display:flex;align-items:center;gap:8px}
-  .fb-step{background:var(--bg-secondary);border-radius:var(--radius);padding:.75rem 1rem;margin-bottom:.75rem;font-size:13px;line-height:1.6;border:.5px solid var(--border)}
-  .fb-step strong{color:var(--text)}
-  .fb-step code{background:var(--bg-tertiary);padding:1px 5px;border-radius:4px;font-family:var(--mono);font-size:11px}
-  .fb-step a{color:var(--blue);text-decoration:none;font-weight:600}
-  .fb-code-input{width:100%;min-height:90px;font-family:var(--mono);font-size:11px;padding:8px;border:.5px solid var(--border-md);border-radius:var(--radius);background:var(--bg-secondary);resize:vertical;color:var(--text);margin-top:6px}
-  .fb-status{font-size:12px;padding:8px 12px;border-radius:var(--radius);margin-top:8px;display:none;line-height:1.5}
-  .fb-status.ok{display:block;background:var(--green-light);color:#2a5a0a;border:.5px solid #b2d98b}
-  .fb-status.err{display:block;background:var(--red-light);color:var(--red);border:.5px solid #d09090}
-  .fb-status.loading{display:block;background:var(--bg-secondary);color:var(--text-secondary);border:.5px solid var(--border)}
-  .fb-actions{display:flex;gap:8px;margin-top:1rem;justify-content:flex-end;flex-wrap:wrap;align-items:center}
-  .fb-divider{text-align:center;color:var(--text-tertiary);font-size:12px;margin:.75rem 0;position:relative}
-  .fb-divider::before{content:'';position:absolute;top:50%;left:0;right:0;height:.5px;background:var(--border)}
-  .fb-divider span{background:var(--bg);padding:0 8px;position:relative}
-  .fb-export-code{font-family:var(--mono);font-size:10px;word-break:break-all;background:var(--bg-secondary);padding:8px;border-radius:var(--radius);border:.5px solid var(--border);max-height:60px;overflow:auto;cursor:pointer;user-select:all}
-  .fb-manual-btns{display:flex;gap:8px}
-  .fb-manual-btns button{flex:1;font-size:12px}
 </style>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script>
-// ── Cloud Storage Module ──────────────────────────────────────────────────────
-(function(){
-  const CFG_KEY='fh_fbcfg_v1';
-  let firedb=null,fbOk=false;
-
-  function lsGet(k){return{value:localStorage.getItem(k)};}
-  function lsSet(k,v){localStorage.setItem(k,v);}
-
-  function updateBadge(ok,msg){
-    const b=document.getElementById('sync-badge');
-    if(!b)return;
-    if(ok){b.textContent='\u2601 Cloud-Sync';b.className='sync-badge sync-ok';}
-    else{b.textContent=msg||'\u26a0 Lokal';b.className='sync-badge sync-warn';}
-  }
-
-  async function tryInit(cfg){
-    try{
-      if(!cfg||!cfg.databaseURL)return false;
-      if(!firebase.apps.length)firebase.initializeApp(cfg);
-      firedb=firebase.database();
-      await firedb.ref('.info/connected').get();
-      fbOk=true;
-      setTimeout(()=>updateBadge(true),50);
-      return true;
-    }catch(e){
-      console.warn('Firebase:',e.message);
-      fbOk=false;
-      setTimeout(()=>updateBadge(false),50);
-      return false;
-    }
-  }
-
-  window.storage={
-    get:async(k)=>{
-      if(fbOk&&firedb){
-        try{const s=await firedb.ref(k).get();return{value:s.exists()?JSON.stringify(s.val()):null};}
-        catch(e){console.warn('FB read err:',e);}
-      }
-      return lsGet(k);
-    },
-    set:async(k,v)=>{
-      lsSet(k,v);
-      if(fbOk&&firedb){
-        try{await firedb.ref(k).set(JSON.parse(v));return;}
-        catch(e){console.warn('FB write err:',e);}
-      }
-    },
-    subscribe:(k,cb)=>{
-      if(fbOk&&firedb)firedb.ref(k).on('value',s=>{if(s.exists())cb(JSON.stringify(s.val()));});
-    },
-    isCloud:()=>fbOk,
-    init:tryInit,
-    getConfig:()=>{try{return JSON.parse(localStorage.getItem(CFG_KEY));}catch{return null;}},
-    saveConfig:(cfg)=>localStorage.setItem(CFG_KEY,JSON.stringify(cfg)),
-    clearConfig:()=>{localStorage.removeItem(CFG_KEY);fbOk=false;firedb=null;updateBadge(false,'\u26a0 Lokal');}
-  };
-
-  // Auto-init from saved config when DOM is ready
-  const saved=window.storage.getConfig();
-  if(saved){
-    document.addEventListener('DOMContentLoaded',()=>window.storage.init(saved),{once:true});
-  }
-})();
+window.storage={
+  get:(k)=>Promise.resolve({value:localStorage.getItem(k)}),
+  set:(k,v)=>{localStorage.setItem(k,v);return Promise.resolve();}
+};
 </script>
 </head>
 <body>
@@ -246,7 +160,6 @@
       </div>
       <button class="btn-success" id="import-btn">&#8679; Import</button>
       <button class="btn-primary" id="add-btn">+ Buchung</button>
-      <span class="sync-badge sync-warn" id="sync-badge" onclick="openSyncModal()" title="Cloud-Sync konfigurieren">&#9888; Lokal</span>
     </div>
   </div>
   <div class="stats" id="stats-bar"></div>
@@ -334,42 +247,6 @@ Familienzimmer,Familie Schmidt,15.06.2025,20.06.2025,Direkt</div>
       <button class="btn-danger" id="delete-btn" style="display:none">&#128465; L&ouml;schen</button>
       <button id="cancel-btn">Abbrechen</button>
       <button class="btn-primary" id="save-btn">Speichern</button>
-    </div>
-  </div>
-</div>
-<div class="fb-modal-overlay" id="fb-modal-overlay">
-  <div class="fb-modal">
-    <h3>&#9729; Cloud-Sync einrichten</h3>
-    <div class="fb-step">
-      <strong>Schritt 1:</strong> Gehe zu <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a> und erstelle ein kostenloses Projekt.<br>
-      Aktiviere die <strong>Realtime Database</strong> (Europas Region w&auml;hlen &rarr; <em>Testmodus</em>).
-    </div>
-    <div class="fb-step">
-      <strong>Schritt 2:</strong> Klicke auf <em>Projekteinstellungen &#8594; Web-App hinzuf&uuml;gen</em>.<br>
-      Kopiere den <code>firebaseConfig</code>-Block (die geschweifte Klammer inkl. Inhalt).
-    </div>
-    <div class="fb-step">
-      <strong>Schritt 3:</strong> F&uuml;ge die Konfiguration hier ein und klicke <em>Verbinden</em>:
-      <textarea id="fb-config-input" class="fb-code-input" placeholder='{"apiKey":"AIzaSy...","authDomain":"mein-projekt.firebaseapp.com","databaseURL":"https://mein-projekt-default-rtdb.europe-west1.firebasedatabase.app","projectId":"mein-projekt","storageBucket":"...","messagingSenderId":"...","appId":"..."}' spellcheck="false"></textarea>
-      <div class="fb-status" id="fb-status"></div>
-    </div>
-    <div class="fb-actions">
-      <button id="fb-disconnect-btn" class="btn-danger" style="display:none;margin-right:auto">&#10005; Trennen</button>
-      <button id="fb-cancel-btn">Schlie&szlig;en</button>
-      <button class="btn-primary" id="fb-connect-btn">&#10003; Verbinden &amp; Testen</button>
-    </div>
-    <div class="fb-divider"><span>oder: Daten manuell &uuml;bertragen</span></div>
-    <div class="fb-manual-btns">
-      <button id="fb-export-btn">&#8595; Exportieren</button>
-      <button id="fb-import-btn">&#8593; Importieren</button>
-    </div>
-    <div id="fb-export-area" style="display:none;margin-top:10px">
-      <div class="fb-export-code" id="fb-export-code" title="Klicken zum Kopieren"></div>
-      <div style="font-size:11px;color:var(--text-secondary);margin-top:4px">&#8679; Klicken zum Kopieren &ndash; diesen Code auf dem anderen Ger&auml;t unter &ldquo;Importieren&rdquo; einf&uuml;gen.</div>
-    </div>
-    <div id="fb-import-area" style="display:none;margin-top:10px">
-      <textarea id="fb-import-code" class="fb-code-input" placeholder="Export-Code hier einf&uuml;gen&#8230;" style="min-height:60px"></textarea>
-      <button class="btn-primary" id="fb-import-apply-btn" style="margin-top:6px;font-size:12px;width:100%">Daten laden</button>
     </div>
   </div>
 </div>
@@ -489,74 +366,7 @@ document.getElementById('file-input').onchange=e=>{if(e.target.files[0])processF
 document.getElementById('parse-paste-btn').onclick=()=>{const t=document.getElementById('paste-input').value;if(!t.trim()){alert('Bitte CSV einfügen.');return;}showPreview(parseCSVText(t));};
 document.getElementById('confirm-import').onclick=confirmImport;
 document.getElementById('f-room').innerHTML=ROOMS.map(r=>'<option value="'+r.id+'">'+r.name+'</option>').join('');
-async function init(){const n=new Date();currentYear=n.getFullYear();currentMonth=n.getMonth();updateMonthLabel();if(window.storage.getConfig())await new Promise(r=>setTimeout(r,900));await load();renderCalendar();if(window.storage.isCloud())window.storage.subscribe(SK,v=>{const nb=JSON.parse(v);if(JSON.stringify(nb)!==JSON.stringify(bookings)){bookings=nb;renderCalendar();}});}
-// ── Sync Modal ────────────────────────────────────────────────────────────────
-function openSyncModal(){
-  const saved=window.storage.getConfig();
-  const inp=document.getElementById('fb-config-input');
-  const dis=document.getElementById('fb-disconnect-btn');
-  if(saved){inp.value=JSON.stringify(saved,null,2);dis.style.display='flex';}
-  else{inp.value='';dis.style.display='none';}
-  document.getElementById('fb-status').className='fb-status';
-  document.getElementById('fb-export-area').style.display='none';
-  document.getElementById('fb-import-area').style.display='none';
-  document.getElementById('fb-modal-overlay').classList.add('open');
-}
-function closeSyncModal(){document.getElementById('fb-modal-overlay').classList.remove('open');}
-document.getElementById('fb-cancel-btn').onclick=closeSyncModal;
-document.getElementById('fb-modal-overlay').onclick=e=>{if(e.target===document.getElementById('fb-modal-overlay'))closeSyncModal();};
-document.getElementById('fb-connect-btn').onclick=async()=>{
-  const raw=document.getElementById('fb-config-input').value.trim();
-  const st=document.getElementById('fb-status');
-  if(!raw){st.textContent='Bitte Firebase-Konfiguration eingeben.';st.className='fb-status err';return;}
-  let cfg;
-  try{
-    const cleaned=raw.replace(/^[\s\S]*?(\{)/,'$1').replace(/\}\s*[^}]*$/,'}');
-    cfg=JSON.parse(cleaned);
-  }catch(e){st.textContent='Ungültiges JSON. Bitte vollständigen firebaseConfig-Block einfügen.';st.className='fb-status err';return;}
-  if(!cfg.databaseURL){st.textContent='databaseURL fehlt. Bitte sicherstellen, dass die Realtime Database aktiviert ist.';st.className='fb-status err';return;}
-  st.textContent='Verbindung wird getestet…';st.className='fb-status loading';
-  const ok=await window.storage.init(cfg);
-  if(ok){
-    window.storage.saveConfig(cfg);
-    st.textContent='✓ Verbunden! Buchungen werden jetzt automatisch zwischen allen Geräten synchronisiert.';
-    st.className='fb-status ok';
-    document.getElementById('fb-disconnect-btn').style.display='flex';
-    await save();
-    window.storage.subscribe(SK,v=>{const nb=JSON.parse(v);if(JSON.stringify(nb)!==JSON.stringify(bookings)){bookings=nb;renderCalendar();}});
-  }else{
-    st.textContent='Verbindung fehlgeschlagen. Bitte Firebase-URL und Projekt-ID überprüfen.';
-    st.className='fb-status err';
-  }
-};
-document.getElementById('fb-disconnect-btn').onclick=()=>{
-  if(!confirm('Cloud-Sync trennen? Daten bleiben lokal gespeichert.'))return;
-  window.storage.clearConfig();
-  document.getElementById('fb-config-input').value='';
-  document.getElementById('fb-status').className='fb-status';
-  document.getElementById('fb-disconnect-btn').style.display='none';
-};
-document.getElementById('fb-export-btn').onclick=()=>{
-  const code=btoa(unescape(encodeURIComponent(JSON.stringify(bookings))));
-  const el=document.getElementById('fb-export-code');
-  el.textContent=code;
-  el.onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(code).then(()=>{el.style.outline='2px solid var(--green)'});};
-  document.getElementById('fb-export-area').style.display='block';
-  document.getElementById('fb-import-area').style.display='none';
-};
-document.getElementById('fb-import-btn').onclick=()=>{
-  document.getElementById('fb-import-area').style.display='block';
-  document.getElementById('fb-export-area').style.display='none';
-};
-document.getElementById('fb-import-apply-btn').onclick=async()=>{
-  const code=document.getElementById('fb-import-code').value.trim();
-  if(!code){alert('Bitte Export-Code einfügen.');return;}
-  try{
-    const nb=JSON.parse(decodeURIComponent(escape(atob(code))));
-    if(!Array.isArray(nb))throw new Error('bad format');
-    bookings=nb;await save();renderCalendar();closeSyncModal();
-  }catch(e){alert('Ungültiger Code.');}
-};
+async function init(){const n=new Date();currentYear=n.getFullYear();currentMonth=n.getMonth();updateMonthLabel();await load();renderCalendar();}
 init();
 </script>
 </body>
